@@ -5,7 +5,6 @@ const jwt = require("jsonwebtoken");
 const fs = require("fs");
 const path = require("path");
 const { v4: uuid } = require("uuid");
-const { error } = require("console");
 
 //todo unsecured endpoint
 const register = async (req, res, next) => {
@@ -104,6 +103,47 @@ const getUsers = async function (req, res, next) {
 };
 
 //todo secured endpoint
+const editUser = async function (req, res, next) {
+  try {
+    const {name, email, currentPassword, newPassword, newConfirmPassword} = req.body;
+    if(!name || !email || !currentPassword || !newPassword) {
+      return next(new HttpError('Please fill all the fields.'));
+    }
+
+    // get the user
+    const user = await User.findById(req.user.id);
+    if(!user) {
+      return next(new HttpError("User not found", 403));
+    }
+
+    // make sure the new email not exist.
+    const emailExist = await User.findOne({email});
+    if(emailExist && (emailExist._id != req.user.id)) {
+      return next(new HttpError('Email already exist.', 422));
+    }
+    // compare current pass => db pass
+    const validateUserPassword = await bcrypt.compare(currentPassword, user.password);
+    if(!validateUserPassword) {
+      return next(new HttpError('Invalid current password', 422));
+    }
+    // compare new password
+    if(newPassword !== newConfirmPassword) {
+      return next(new HttpError('New password do not much', 422));
+    }
+
+    // hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPaaword = await bcrypt.hash(newPassword, salt);
+
+    // update user info db
+    const newInfo = await User.findByIdAndUpdate(req.user.id, {name, email, password: hashedPaaword}, {new: true});
+    res.status(200).json(newInfo);
+  } catch (error) {
+    return next(new HttpError(error));
+  }
+};
+
+//todo secured endpoint
 const changeAvatar = async function (req, res, next) {
   try {
     if (!req.files.avatar) {
@@ -120,20 +160,19 @@ const changeAvatar = async function (req, res, next) {
       });
     }
 
-    const { avatar } = req.files;
+    const {avatar} = req.files;
     //check the image size
     if (avatar.size > 500000) {
       return next(
-        new HttpError("Profile image too big, Should be less then 500kb"),
-        422
+        new HttpError("Profile image too big, Should be less then 500kb", 422)
       );
     }
 
     let fileName;
     fileName = avatar.name;
     let splittedFilename = fileName.split(".");
-    let newFileName = (splittedFilename[0] =
-      uuid() + "." + splittedFilename[splittedFilename.length - 1]);
+    let newFileName = splittedFilename[0] +
+      uuid() + "." + splittedFilename[splittedFilename.length - 1];
     avatar.mv(
       path.join(__dirname, "..", "uploads", newFileName),
       async (error) => {
@@ -142,8 +181,8 @@ const changeAvatar = async function (req, res, next) {
         }
         const updatedAvatar = await User.findByIdAndUpdate(
           req.user.id,
-          { avatar: newFileName },
-          { new: true }
+          {avatar: newFileName},
+          {new: true}
         );
         if (!updatedAvatar) {
           return next(new HttpError("Avatar couldn't be changed.", 422));
@@ -151,15 +190,6 @@ const changeAvatar = async function (req, res, next) {
         res.status(200).json(updatedAvatar);
       }
     );
-  } catch (error) {
-    return next(new HttpError(error));
-  }
-};
-
-//todo secured endpoint
-const editUser = async function (req, res, next) {
-  try {
-    res.json("Update user method");
   } catch (error) {
     return next(new HttpError(error));
   }

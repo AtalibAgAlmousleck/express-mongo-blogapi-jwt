@@ -10,7 +10,6 @@ const authentication = async function (req, res, next) {
       if (error) {
         return next(new HttpError("Unauthorized. Invalid token.", 403));
       }
-
       req.user = info;
       next();
     });
