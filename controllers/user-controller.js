@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const { ObjectId } = require('mongodb'); 
 const User = require("../models/user-model");
 const HttpError = require("../models/error-model");
 const jwt = require("jsonwebtoken");
@@ -195,6 +196,26 @@ const changeAvatar = async function (req, res, next) {
   }
 };
 
+const deleteUser = async function(req, res, next) {
+  try {
+    const {userId} = req.params;
+
+    // Validate if id is a valid ObjectId
+    if(!ObjectId.isValid(userId)) {
+      return next(new HttpError("Invalid user ID", 422));
+    }
+    const result = await User.deleteOne({_id: new ObjectId(userId)});
+
+    if(result.deletedCount === 0) {
+      return next(new HttpError(`User with the given id: ${userId} not found.`, 404));
+    }
+
+    res.status(200).json(`User with ID ${userId} deleted successfully`)
+  } catch (error) {
+    return next(new HttpError(error));
+  }
+}
+
 module.exports = {
   register,
   login,
@@ -202,4 +223,5 @@ module.exports = {
   changeAvatar,
   editUser,
   getUsers,
+  deleteUser
 };

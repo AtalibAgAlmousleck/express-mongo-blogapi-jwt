@@ -1,22 +1,16 @@
 const { Router } = require("express");
 const authentication = require('../middlewares/authentication');
 
-const {
-  register,
-  login,
-  getUser,
-  changeAvatar,
-  editUser,
-  getUsers,
-} = require("../controllers/user-controller");
+const userController = require("../controllers/user-controller");
 
 const router = Router();
 
-router.post('/register', register);
-router.post('/login', login);
-router.get('/:id', getUser);
-router.get('/', getUsers);
-router.post('/change-avatar', authentication, changeAvatar);
-router.patch('/edit-user', authentication, editUser);
+router.post('/register', userController.register);
+router.post('/login', userController.login);
+router.get('/:id', userController.getUser);
+router.get('/', userController.getUsers);
+router.post('/change-avatar',authentication, userController.changeAvatar);
+router.patch('/edit-user',authentication, userController.editUser);
+router.delete('/:userId',authentication, userController.deleteUser)
 
 module.exports = router;
